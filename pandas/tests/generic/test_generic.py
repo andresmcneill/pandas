@@ -334,8 +334,9 @@ class Generic:
             self._compare(*os1)
             self._compare(*os2)
 
+        msg = "random_state must be an integer, a numpy RandomState, or None"
         # Check for error when random_state argument invalid.
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             o.sample(random_state="astring!")
 
         ###
@@ -343,17 +344,19 @@ class Generic:
         ###
 
         # Giving both frac and N throws error
-        with pytest.raises(ValueError):
+        msg = "enter a value for `frac` OR `n`, not both"
+        with pytest.raises(ValueError, match=msg):
             o.sample(n=3, frac=0.3)
 
+        msg = "Please provide positive value."
         # Check that raises right error for negative lengths
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             o.sample(n=-3)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             o.sample(frac=-0.3)
 
         # Make sure float values of `n` give error
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Only integers accepted"):
             o.sample(n=3.2)
 
         # Check lengths are right
@@ -366,41 +369,46 @@ class Generic:
         ###
 
         # Weight length must be right
-        with pytest.raises(ValueError):
+        msg = "Weights and axis to be sampled must be of same length"
+        with pytest.raises(ValueError, match=msg):
             o.sample(n=3, weights=[0, 1])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             bad_weights = [0.5] * 11
             o.sample(n=3, weights=bad_weights)
 
-        with pytest.raises(ValueError):
+        msg = "Fewer non-zero entries in p than size"
+        with pytest.raises(ValueError, match=msg):
             bad_weight_series = Series([0, 0, 0.2])
             o.sample(n=4, weights=bad_weight_series)
 
         # Check won't accept negative weights
-        with pytest.raises(ValueError):
+        msg = "weight vector many not include negative values"
+        with pytest.raises(ValueError, match=msg):
             bad_weights = [-0.1] * 10
             o.sample(n=3, weights=bad_weights)
 
         # Check inf and -inf throw errors:
-        with pytest.raises(ValueError):
+        msg = "weight vector may not include `inf` values"
+        with pytest.raises(ValueError, match=msg):
             weights_with_inf = [0.1] * 10
             weights_with_inf[0] = np.inf
             o.sample(n=3, weights=weights_with_inf)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             weights_with_ninf = [0.1] * 10
             weights_with_ninf[0] = -np.inf
             o.sample(n=3, weights=weights_with_ninf)
 
         # All zeros raises errors
         zero_weights = [0] * 10
-        with pytest.raises(ValueError):
+        msg = "Invalid weights: weights sum to zero"
+        with pytest.raises(ValueError, match=msg):
             o.sample(n=3, weights=zero_weights)
 
         # All missing weights
         nan_weights = [np.nan] * 10
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             o.sample(n=3, weights=nan_weights)
 
         # Check np.nan are replaced by zeros.
@@ -565,10 +573,15 @@ class TestNDFrame:
         # Ensure proper error if string given as weight for Series or
         # DataFrame with axis = 1.
         s = Series(range(10))
-        with pytest.raises(ValueError):
+        msg = "Strings cannot be passed as weights when sampling from a Series."
+        with pytest.raises(ValueError, match=msg):
             s.sample(n=3, weights="weight_column")
 
-        with pytest.raises(ValueError):
+        msg = (
+            "Strings can only be passed to weights "
+            "when sampling from rows on a DataFrame"
+        )
+        with pytest.raises(ValueError, match=msg):
             df.sample(n=1, weights="weight_column", axis=1)
 
         # Check weighting key error
@@ -606,18 +619,20 @@ class TestNDFrame:
         )
 
         # Check out of range axis values
-        with pytest.raises(ValueError):
+        msg = "No axis named .* for object type"
+        with pytest.raises(ValueError, match=msg):
             df.sample(n=1, axis=2)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             df.sample(n=1, axis="not_a_name")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             s = pd.Series(range(10))
             s.sample(n=1, axis=1)
 
         # Test weight length compared to correct axis
-        with pytest.raises(ValueError):
+        msg = "Weights and axis to be sampled must be of same length"
+        with pytest.raises(ValueError, match=msg):
             df.sample(n=1, axis=1, weights=[0.5] * 10)
 
         # Check weights with axis = 1
@@ -651,7 +666,8 @@ class TestNDFrame:
 
         # No overlap in weight and sampled DataFrame indices
         s4 = Series([1, 0], index=[1, 2])
-        with pytest.raises(ValueError):
+        msg = "Invalid weights: weights sum to zero"
+        with pytest.raises(ValueError, match=msg):
             df.sample(1, weights=s4)
 
     def test_squeeze(self):
@@ -679,10 +695,9 @@ class TestNDFrame:
         tm.assert_series_equal(df.squeeze(axis=1), df.iloc[:, 0])
         tm.assert_series_equal(df.squeeze(axis="columns"), df.iloc[:, 0])
         assert df.squeeze() == df.iloc[0, 0]
-        msg = "No axis named 2 for object type <class 'pandas.core.frame.DataFrame'>"
+        msg = "No axis named .* for object type <class 'pandas.core.frame.DataFrame'>"
         with pytest.raises(ValueError, match=msg):
             df.squeeze(axis=2)
-        msg = "No axis named x for object type <class 'pandas.core.frame.DataFrame'>"
         with pytest.raises(ValueError, match=msg):
             df.squeeze(axis="x")
 
@@ -880,10 +895,11 @@ class TestNDFrame:
     def test_pipe_tuple_error(self):
         df = DataFrame({"A": [1, 2, 3]})
         f = lambda x, y: y
-        with pytest.raises(ValueError):
+        msg = "y is both the pipe target and a keyword argument"
+        with pytest.raises(ValueError, match=msg):
             df.pipe((f, "y"), x=1, y=0)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=msg):
             df.A.pipe((f, "y"), x=1, y=0)
 
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
