@@ -57,7 +57,7 @@ class TestSeries(Generic):
 
     def test_set_axis_name_raises(self):
         s = pd.Series([1])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No axis named 1"):
             s._set_axis_name(name="a", axis=1)
 
     def test_get_numeric_data_preserve_dtype(self):
